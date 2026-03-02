@@ -1,19 +1,10 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { TaskBoard } from "./TaskBoard";
 
-type TaskStatus = "inbox" | "in_progress" | "review" | "done";
-
-type Task = {
-  id: string;
-  title: string;
-  status: TaskStatus;
-  priority: string;
-  approvals_pending_count?: number;
-  blocked_by_task_ids?: string[];
-  is_blocked?: boolean;
-};
+type Task = ComponentProps<typeof TaskBoard>["tasks"][number];
 
 const buildTask = (overrides: Partial<Task> = {}): Task => ({
   id: `task-${Math.random().toString(16).slice(2)}`,
@@ -83,16 +74,44 @@ describe("TaskBoard", () => {
 
     render(<TaskBoard tasks={tasks} />);
 
-    expect(screen.getByRole("heading", { name: "Inbox" })).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "In Progress" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Review" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Done" })).toBeInTheDocument();
+    const inboxHeading = screen.getByRole("heading", { name: "Inbox" });
+    const inProgressHeading = screen.getByRole("heading", {
+      name: "In Progress",
+    });
+    const reviewHeading = screen.getByRole("heading", { name: "Review" });
+    const doneHeading = screen.getByRole("heading", { name: "Done" });
 
-    // Column count badges are plain spans; easiest stable check is text occurrence.
-    expect(screen.getAllByText("2").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("1").length).toBeGreaterThanOrEqual(1);
+    expect(inboxHeading).toBeInTheDocument();
+    expect(inProgressHeading).toBeInTheDocument();
+    expect(reviewHeading).toBeInTheDocument();
+    expect(doneHeading).toBeInTheDocument();
+
+    const inboxColumn = inboxHeading.closest(".kanban-column") as HTMLElement | null;
+    const inProgressColumn = inProgressHeading.closest(
+      ".kanban-column",
+    ) as HTMLElement | null;
+    const reviewColumn = reviewHeading.closest(".kanban-column") as HTMLElement | null;
+    const doneColumn = doneHeading.closest(".kanban-column") as HTMLElement | null;
+    expect(inboxColumn).toBeTruthy();
+    expect(inProgressColumn).toBeTruthy();
+    expect(reviewColumn).toBeTruthy();
+    expect(doneColumn).toBeTruthy();
+    if (!inboxColumn || !inProgressColumn || !reviewColumn || !doneColumn) return;
+
+    const getColumnCountBadge = (column: HTMLElement) =>
+      column.querySelector(
+        ".column-header span.h-6.w-6.rounded-full",
+      ) as HTMLElement | null;
+
+    const inboxCountBadge = getColumnCountBadge(inboxColumn);
+    const inProgressCountBadge = getColumnCountBadge(inProgressColumn);
+    const reviewCountBadge = getColumnCountBadge(reviewColumn);
+    const doneCountBadge = getColumnCountBadge(doneColumn);
+
+    expect(inboxCountBadge).toHaveTextContent("2");
+    expect(inProgressCountBadge).toHaveTextContent("1");
+    expect(reviewCountBadge).toHaveTextContent("1");
+    expect(doneCountBadge).toHaveTextContent("1");
 
     expect(screen.getByText("Inbox A")).toBeInTheDocument();
     expect(screen.getByText("Inbox B")).toBeInTheDocument();
